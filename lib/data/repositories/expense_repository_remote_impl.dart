@@ -29,4 +29,10 @@ class ExpenseRepositoryRemoteImpl implements ExpenseRepository {
   Future<void> delete(int id) async {
     await _ds.delete('expenses/$id');
   }
+
+  @override
+  Future<List<Expense>> getByCategory(int categoryId, int year, int month) async => [];
+
+  @override
+  Future<bool> hasFixedExpenses(int fixedCategoryId, int year, int month) async => true;
 }

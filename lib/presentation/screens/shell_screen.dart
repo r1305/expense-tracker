@@ -33,11 +33,19 @@ class _ShellScreenState extends State<ShellScreen> {
   }
 
   Future<void> _loadAll() async {
+    if (!mounted) return;
+    final salaryProv = context.read<SalaryProvider>();
+    final expenseProv = context.read<ExpenseProvider>();
+    final categoryProv = context.read<CategoryProvider>();
     await Future.wait([
-      context.read<SalaryProvider>().load(),
-      context.read<ExpenseProvider>().load(),
-      context.read<CategoryProvider>().load(),
+      salaryProv.load(),
+      expenseProv.load(),
+      categoryProv.load(),
     ]);
+    final fixedId = categoryProv.fixedCategoryId;
+    if (fixedId != null) {
+      await expenseProv.carryOverFixed(fixedId);
+    }
   }
 
   @override

@@ -10,29 +10,31 @@ class LocalDatasource {
 
   Future<Database> _init() async {
     if (kIsWeb) {
-      // Configurar el factory para web
       databaseFactory = databaseFactoryFfiWeb;
     }
 
     final path = kIsWeb ? 'expenses.db' : join(await getDatabasesPath(), 'expenses.db');
-    
+
     return await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 2,
+        version: 3,
         onCreate: (db, version) async {
           await _createTables(db);
         },
         onUpgrade: (db, oldVersion, newVersion) async {
           if (oldVersion < 2) {
-            await db.execute('''
-              CREATE TABLE IF NOT EXISTS categories(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL
-              )
-            ''');
-            await db.execute(
-                'ALTER TABLE expenses ADD COLUMN category_id INTEGER REFERENCES categories(id)');
+            await db.execute('CREATE TABLE IF NOT EXISTS categories(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)');
+            await db.execute('ALTER TABLE expenses ADD COLUMN category_id INTEGER REFERENCES categories(id)');
+          }
+          if (oldVersion < 3) {
+            await db.execute("ALTER TABLE categories ADD COLUMN fixed INTEGER NOT NULL DEFAULT 0");
+            final rows = await db.rawQuery("SELECT id FROM categories WHERE name = 'Fijos'");
+            if (rows.isEmpty) {
+              await db.execute("INSERT INTO categories (name, fixed) VALUES ('Fijos', 1)");
+            } else {
+              await db.execute("UPDATE categories SET fixed = 1 WHERE name = 'Fijos'");
+            }
           }
         },
       ),
@@ -43,10 +45,11 @@ class LocalDatasource {
     await db.execute('''
       CREATE TABLE categories(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL
+        name TEXT NOT NULL,
+        fixed INTEGER NOT NULL DEFAULT 0
       )
     ''');
-    
+
     await db.execute('''
       CREATE TABLE expenses(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,7 +60,7 @@ class LocalDatasource {
         category_id INTEGER REFERENCES categories(id)
       )
     ''');
-    
+
     await db.execute('''
       CREATE TABLE salary(
         id INTEGER PRIMARY KEY,
@@ -66,7 +69,7 @@ class LocalDatasource {
       )
     ''');
 
-    // Insertar categorías por defecto
+    await db.execute("INSERT INTO categories (name, fixed) VALUES ('Fijos', 1)");
     await db.execute("INSERT INTO categories (name) VALUES ('Comida')");
     await db.execute("INSERT INTO categories (name) VALUES ('Transporte')");
     await db.execute("INSERT INTO categories (name) VALUES ('Entretenimiento')");
@@ -82,13 +85,17 @@ class LocalDatasource {
     return d.rawQuery(sql, whereArgs);
   }
 
+  Future<List<Map<String, dynamic>>> rawQuery(String sql, [List<Object?>? args]) async {
+    final d = await db;
+    return d.rawQuery(sql, args);
+  }
+
   Future<void> insert(String table, Map<String, dynamic> values,
       {ConflictAlgorithm? conflictAlgorithm}) async {
     final d = await db;
     final cols = values.keys.toList();
     final placeholders = List.filled(cols.length, '?').join(', ');
-    final conflict =
-        conflictAlgorithm == ConflictAlgorithm.replace ? 'OR REPLACE' : '';
+    final conflict = conflictAlgorithm == ConflictAlgorithm.replace ? 'OR REPLACE' : '';
     await d.execute(
       'INSERT $conflict INTO $table (${cols.join(', ')}) VALUES ($placeholders)',
       cols.map((c) => values[c]).toList(),

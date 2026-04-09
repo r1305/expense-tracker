@@ -15,6 +15,13 @@ class CategoryProvider extends ChangeNotifier {
     load();
   }
 
+  int? get fixedCategoryId {
+    final match = categories.where((c) => c.fixed);
+    return match.isNotEmpty ? match.first.id : null;
+  }
+
+  bool isFixed(int? id) => id != null && id == fixedCategoryId;
+
   Future<void> load() async {
     categories = await _repo.getAll();
     notifyListeners();
@@ -31,6 +38,7 @@ class CategoryProvider extends ChangeNotifier {
   }
 
   Future<void> remove(int id) async {
+    if (isFixed(id)) return;
     await _repo.delete(id);
     await load();
   }

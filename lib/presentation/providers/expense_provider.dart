@@ -37,4 +37,26 @@ class ExpenseProvider extends ChangeNotifier {
 
   double totalByCurrency(String currency) =>
       expenses.where((e) => e.currency == currency).fold(0, (s, e) => s + e.amount);
+
+  Future<void> carryOverFixed(int fixedCategoryId) async {
+    final now = DateTime.now();
+    final alreadyExists = await _repo.hasFixedExpenses(fixedCategoryId, now.year, now.month);
+    if (alreadyExists) return;
+
+    final prevMonth = DateTime(now.year, now.month - 1, 1);
+    final previous = await _repo.getByCategory(fixedCategoryId, prevMonth.year, prevMonth.month);
+    if (previous.isEmpty) return;
+
+    final firstOfMonth = DateTime(now.year, now.month, 1);
+    for (final e in previous) {
+      await _repo.insert(Expense(
+        description: e.description,
+        amount: e.amount,
+        currency: e.currency,
+        date: firstOfMonth,
+        categoryId: fixedCategoryId,
+      ));
+    }
+    await load();
+  }
 }

@@ -36,17 +36,15 @@ class _CategoryManagerDialogState extends State<CategoryManagerDialog> {
     final name = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title:
-            Text(category != null ? 'Editar Categoría' : 'Nueva Categoría'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(category != null ? 'Editar Categoría' : 'Nueva Categoría'),
         content: TextField(
           controller: ctrl,
           autofocus: true,
           decoration: const InputDecoration(labelText: 'Nombre'),
         ),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           FilledButton(
             onPressed: () {
               final v = ctrl.text.trim();
@@ -59,38 +57,35 @@ class _CategoryManagerDialogState extends State<CategoryManagerDialog> {
     );
     if (name == null) return;
     if (category != null) {
-      await _prov.update(Category(id: category.id, name: name));
+      await _prov.update(Category(id: category.id, name: name, fixed: category.fixed));
     } else {
       await _prov.add(Category(name: name));
     }
   }
 
   Future<void> _delete(Category cat) async {
+    if (cat.fixed) return;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Eliminar categoría'),
-        content: Text(
-            '¿Eliminar "${cat.name}"? Los gastos asociados quedarán sin categoría.'),
+        content: Text('¿Eliminar "${cat.name}"? Los gastos asociados quedarán sin categoría.'),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('No')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Sí')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sí')),
         ],
       ),
     );
-    if (ok == true) {
-      await _prov.remove(cat.id!);
-    }
+    if (ok == true) await _prov.remove(cat.id!);
   }
 
   @override
   Widget build(BuildContext context) {
     final categories = _prov.categories;
+    final cs = Theme.of(context).colorScheme;
     return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('Categorías'),
       content: SizedBox(
         width: double.maxFinite,
@@ -105,16 +100,22 @@ class _CategoryManagerDialogState extends State<CategoryManagerDialog> {
                 itemBuilder: (_, i) {
                   final cat = categories[i];
                   return ListTile(
+                    leading: cat.fixed
+                        ? Icon(Icons.push_pin_rounded, size: 18, color: cs.primary)
+                        : null,
                     title: Text(cat.name),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                            icon: const Icon(Icons.edit, size: 20),
-                            onPressed: () => _showForm(category: cat)),
-                        IconButton(
+                          icon: const Icon(Icons.edit, size: 20),
+                          onPressed: () => _showForm(category: cat),
+                        ),
+                        if (!cat.fixed)
+                          IconButton(
                             icon: const Icon(Icons.delete, size: 20),
-                            onPressed: () => _delete(cat)),
+                            onPressed: () => _delete(cat),
+                          ),
                       ],
                     ),
                   );
@@ -122,14 +123,8 @@ class _CategoryManagerDialogState extends State<CategoryManagerDialog> {
               ),
       ),
       actions: [
-        TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cerrar')),
-        FilledButton.icon(
-          onPressed: _showForm,
-          icon: const Icon(Icons.add),
-          label: const Text('Agregar'),
-        ),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar')),
+        FilledButton.icon(onPressed: _showForm, icon: const Icon(Icons.add), label: const Text('Agregar')),
       ],
     );
   }
