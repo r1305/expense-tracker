@@ -18,6 +18,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  int? _selectedCategoryId;
+
   Future<void> _editSalary() async {
     final salaryProv = context.read<SalaryProvider>();
     final formKey = GlobalKey<FormState>();
@@ -133,6 +135,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final balance = salaryProv.amount - totalExpenses;
     final pct = salaryProv.amount > 0 ? (totalExpenses / salaryProv.amount).clamp(0.0, 1.0) : 0.0;
 
+    final filtered = _selectedCategoryId == null
+        ? expenseProv.expenses
+        : expenseProv.expenses.where((e) => e.categoryId == _selectedCategoryId).toList();
+
+    final usedCategoryIds = expenseProv.expenses.map((e) => e.categoryId).whereType<int>().toSet();
+    final usedCategories = categoryProv.categories.where((c) => usedCategoryIds.contains(c.id)).toList();
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: CustomScrollView(
@@ -204,16 +213,59 @@ class _HomeScreenState extends State<HomeScreen> {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             sliver: SliverToBoxAdapter(
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Últimos gastos', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-                  const Spacer(),
-                  Text('${expenseProv.expenses.length} registros', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey)),
+                  Row(
+                    children: [
+                      Text('Últimos gastos', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                      const Spacer(),
+                      Text('${filtered.length} registros', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey)),
+                    ],
+                  ),
+                  if (usedCategories.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 38,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        separatorBuilder: (_, i1) => const SizedBox(width: 8),
+                        itemCount: usedCategories.length + 1,
+                        itemBuilder: (_, i) {
+                          if (i == 0) {
+                            final selected = _selectedCategoryId == null;
+                            return ChoiceChip(
+                              label: const Text('Todas'),
+                              selected: selected,
+                              onSelected: (_) => setState(() => _selectedCategoryId = null),
+                              selectedColor: cs.primary,
+                              labelStyle: TextStyle(color: selected ? Colors.white : null, fontSize: 13, fontWeight: FontWeight.w600),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              side: BorderSide.none,
+                              showCheckmark: false,
+                            );
+                          }
+                          final cat = usedCategories[i - 1];
+                          final selected = _selectedCategoryId == cat.id;
+                          return ChoiceChip(
+                            label: Text(cat.name),
+                            selected: selected,
+                            onSelected: (_) => setState(() => _selectedCategoryId = selected ? null : cat.id),
+                            selectedColor: cs.primary,
+                            labelStyle: TextStyle(color: selected ? Colors.white : null, fontSize: 13, fontWeight: FontWeight.w600),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            side: BorderSide.none,
+                            showCheckmark: false,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
           ),
-          expenseProv.expenses.isEmpty
+          filtered.isEmpty
               ? SliverFillRemaining(
                   child: Center(
                     child: Column(
@@ -221,7 +273,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Icon(Icons.receipt_long_rounded, size: 64, color: Colors.grey.shade300),
                         const SizedBox(height: 16),
-                        Text('Sin gastos aún', style: TextStyle(fontSize: 16, color: Colors.grey.shade400)),
+                        Text(_selectedCategoryId != null ? 'Sin gastos en esta categoría' : 'Sin gastos aún', style: TextStyle(fontSize: 16, color: Colors.grey.shade400)),
                         const SizedBox(height: 4),
                         Text('Toca + para agregar uno', style: TextStyle(fontSize: 13, color: Colors.grey.shade400)),
                       ],
@@ -231,9 +283,9 @@ class _HomeScreenState extends State<HomeScreen> {
               : SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                   sliver: SliverList.builder(
-                    itemCount: expenseProv.expenses.length,
+                    itemCount: filtered.length,
                     itemBuilder: (_, i) {
-                      final e = expenseProv.expenses[i];
+                      final e = filtered[i];
                       final catName = categoryProv.nameById(e.categoryId);
                       return Dismissible(
                         key: ValueKey(e.id),
