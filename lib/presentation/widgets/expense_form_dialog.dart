@@ -134,12 +134,15 @@ class _ExpenseFormDialogState extends State<ExpenseFormDialog> {
                 onTap: _pickDate,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(color: const Color(0xFFF0F0F8), borderRadius: BorderRadius.circular(14)),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).inputDecorationTheme.fillColor ?? Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                   child: Row(
                     children: [
-                      const Icon(Icons.calendar_today_rounded, size: 20, color: Colors.grey),
+                      Icon(Icons.calendar_today_rounded, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
                       const SizedBox(width: 12),
-                      Text(DateFormat('dd MMM yyyy').format(_date), style: const TextStyle(fontSize: 15)),
+                      Text(DateFormat('dd MMM yyyy').format(_date), style: TextStyle(fontSize: 15, color: Theme.of(context).colorScheme.onSurface)),
                       const Spacer(),
                       Text('Cambiar', style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600)),
                     ],
