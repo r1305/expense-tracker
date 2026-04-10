@@ -131,13 +131,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final categoryProv = context.watch<CategoryProvider>();
     final cs = Theme.of(context).colorScheme;
 
-    final totalExpenses = expenseProv.totalByCurrency(salaryProv.currency);
-    final balance = salaryProv.amount - totalExpenses;
-    final pct = salaryProv.amount > 0 ? (totalExpenses / salaryProv.amount).clamp(0.0, 1.0) : 0.0;
-
     final filtered = _selectedCategoryId == null
         ? expenseProv.expenses
         : expenseProv.expenses.where((e) => e.categoryId == _selectedCategoryId).toList();
+
+    final totalExpenses = filtered.where((e) => e.currency == salaryProv.currency).fold(0.0, (s, e) => s + e.amount);
+    final balance = salaryProv.amount - totalExpenses;
+    final pct = salaryProv.amount > 0 ? (totalExpenses / salaryProv.amount).clamp(0.0, 1.0) : 0.0;
 
     final usedCategoryIds = expenseProv.expenses.map((e) => e.categoryId).whereType<int>().toSet();
     final usedCategories = categoryProv.categories.where((c) => usedCategoryIds.contains(c.id)).toList();
